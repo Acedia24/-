@@ -6,7 +6,7 @@
 #include <cstring>
 #include <cstdint>
 
-// Класс для работы с текстовыми файла.
+// Класс для работы с текстовыми файлами.
 class textFileBuffer
 {
 public:
