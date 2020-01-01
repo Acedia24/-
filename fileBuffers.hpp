@@ -1,17 +1,25 @@
-#ifndef FILE_BUFFER_HEADER
-#define FILE_BUFFER_HEADER
+#ifdef _WIN64
+#define FSEEK _fseeki64
+#define FTELL _ftelli64
+#else
+#define FSEEK fseek
+#define FTELL ftell
+#endif
+
+#ifndef MELS_FILE_SYSTEM_HEADER
+#define MELS_FILE_SYSTEM_HEADER
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
 
-// ÐšÐ»Ð°ÑÑ Ð´Ð»Ñ Ñ€Ð°Ð±Ð¾Ñ‚Ñ‹ Ñ Ñ‚ÐµÐºÑÑ‚Ð¾Ð²Ñ‹Ð¼Ð¸ Ñ„Ð°Ð¹Ð»Ð°Ð¼Ð¸.
+// Êëàññ äëÿ ðàáîòû ñ òåêñòîâûìè ôàéëàìè.
 class textFileBuffer
 {
 public:
-	char* data;
-	size_t size;
+	char* data;				/* Àäðåñ áëîêà äàííûõ. */
+	size_t size;			/* Ðàçìåð äàííûõ â áàéòàõ. */
 
 	textFileBuffer() : data(nullptr), size(0) { }
 
@@ -22,105 +30,105 @@ public:
 
 	~textFileBuffer()
 	{
-		if (this->data != nullptr) { free(this->data); }
+		free(this->data);
 	}
 
-	// Ð‘ÑƒÑ„ÐµÑ€Ð¸Ð·ÑƒÐµÑ‚ Ñ‚ÐµÐºÑÑ‚Ð¾Ð²Ñ‹Ð¹ Ñ„Ð°Ð¹Ð».
+	// Áóôåðèçóåò òåêñòîâûé ôàéë.
 	bool readFileToStr(const char* filePath)
 	{
-		// Ð‘Ð»Ð¾Ðº Ð¿Ð°Ð¼ÑÑ‚Ð¸ ÑƒÐ¶Ðµ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÐµÑ‚?
+		// Áëîê ïàìÿòè óæå ñóùåñòâóåò?
 		if (this->data != nullptr)
 		{
 			free(this->data);
 			this->size = 0;
 		}
 
-		// ÐžÑ‚ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Îòêðûâàåì ôàéë.
 		FILE* file = nullptr;
 		errno_t error = fopen_s(&file, filePath, "rt");
 		if (error != 0 || file == nullptr)
 		{
-			printf("readFileToStr(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» %s.\n", filePath);
+			printf("readFileToStr(): can't open file %s.\n", filePath);
 			return false;
 		}
 
-		// Ð’Ñ‹Ñ‡Ð¸ÑÐ»ÑÐµÐ¼ Ð´Ð»Ð¸Ð½Ñƒ Ñ„Ð°Ð¹Ð»Ð°.
-		long int savePos = ftell(file);
-		fseek(file, 0L, SEEK_END);
-		size_t bufferLength = ftell(file);
-		fseek(file, savePos, SEEK_SET);
+		// Âû÷èñëÿåì äëèíó ôàéëà.
+		long int savePos = FTELL(file);
+		FSEEK(file, 0L, SEEK_END);
+		size_t bufferLength = FTELL(file);
+		FSEEK(file, savePos, SEEK_SET);
 
-		// ÐŸÑ€Ð¾Ð±ÑƒÐµÐ¼ Ð²Ñ‹Ð´ÐµÐ»Ð¸Ñ‚ÑŒ Ð±Ð»Ð¾Ðº Ð¿Ð°Ð¼ÑÑ‚Ð¸.
+		// Ïðîáóåì âûäåëèòü áëîê ïàìÿòè.
 		char* fBuffer = (char*)malloc(sizeof(char) * bufferLength);
 		if (fBuffer == nullptr)
 		{
-			puts("readFileToStr(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð²Ñ‹Ð´ÐµÐ»Ð¸Ñ‚ÑŒ Ð¿Ð°Ð¼ÑÑ‚ÑŒ.");
+			puts("readFileToStr(): can't allocate memory.");
 			fclose(file);
 			return false;
 		}
 
-		// Ð‘ÑƒÑ„ÐµÑ€Ð¸Ð·ÑƒÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Áóôåðèçóåì ôàéë.
 		size_t rCount = fread(fBuffer, sizeof(char), bufferLength, file) + 1;
 
-		// ÐŸÐµÑ€ÐµÑ€Ð°ÑÐ¿Ñ€ÐµÐ´ÐµÐ»ÑÐµÐ¼ Ð¿Ð°Ð¼ÑÑ‚ÑŒ, ÐµÑÐ»Ð¸ Ð½ÑƒÐ¶Ð½Ð¾.
+		// Ïåðåðàñïðåäåëÿåì ïàìÿòü, åñëè íóæíî.
 		if (rCount != bufferLength)
 		{
 			char* tempMemory = (char*)realloc(fBuffer, sizeof(char) * rCount);
 			if (tempMemory != nullptr) { fBuffer = tempMemory; }
 		}
 
-		// Ð”Ð¾Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÐ¼ ÑÐ¸Ð¼Ð²Ð¾Ð» ÐºÐ¾Ð½Ñ†Ð° ÑÑ‚Ñ€Ð¾ÐºÐ¸.
+		// Äîïèñûâàåì ñèìâîë êîíöà ñòðîêè.
 		fBuffer[rCount - 1] = '\0';
 
-		// Ð—Ð°ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Çàêðûâàåì ôàéë.
 		fclose(file);
 
-		// Ð—Ð°Ð¿Ð¾Ð¼Ð¸Ð½Ð°ÐµÐ¼ Ð°Ð´Ñ€ÐµÑ Ð¸ Ñ€Ð°Ð·Ð¼ÐµÑ€ Ð±ÑƒÑ„ÐµÑ€Ð°.
+		// Çàïîìèíàåì àäðåñ è ðàçìåð áóôåðà.
 		this->data = fBuffer;
 		this->size = rCount;
 
 		return true;
 	}
 
-	// Ð—Ð°Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÑ‚ ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ð¼Ð¾Ðµ Ð±ÑƒÑ„ÐµÑ€Ð° Ð² Ñ‚ÐµÐºÑÑ‚Ð¾Ð²Ñ‹Ð¹ Ñ„Ð°Ð¹Ð».
+	// Çàïèñûâàåò ñîäåðæèìîå áóôåðà â òåêñòîâûé ôàéë.
 	void writeStrToFile(const char* filePath)
 	{
-		// ÐžÑ‚ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ð¸Ð»Ð¸ ÑÐ¾Ð·Ð´Ð°Ñ‘Ð¼ Ñ„Ð°Ð¹Ð».
-		FILE* file = NULL;
+		// Îòêðûâàåì èëè ñîçäà¸ì ôàéë.
+		FILE* file = nullptr;
 		errno_t error = fopen_s(&file, filePath, "wt");
-		if (error != 0 || file == NULL)
+		if (error != 0 || file == nullptr)
 		{
-			printf("writeStrToFile(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» %s.", filePath);
+			printf("writeStrToFile(): can't open file %s.", filePath);
 			return;
 		}
 
-		// Ð—Ð°Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÐ¼ ÑÑ‚Ñ€Ð¾ÐºÑƒ Ð² Ñ„Ð°Ð¹Ð».
+		// Çàïèñûâàåì ñòðîêó â ôàéë.
 		size_t wCount = fwrite(this->data, sizeof(char), this->size - 1, file);
 		if (wCount == 0)
 		{
-			puts("writeStrToFile(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð·Ð°Ð¿Ð¸ÑÐ°Ñ‚ÑŒ ÑÑ‚Ñ€Ð¾ÐºÑƒ Ð² Ñ„Ð°Ð¹Ð».");
+			puts("writeStrToFile(): can't write string in file.");
 		}
 
-		// Ð—Ð°ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Çàêðûâàåì ôàéë.
 		fclose(file);
 	}
 
-	// Ð’Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ ÑƒÐºÐ°Ð·Ð°Ñ‚ÐµÐ»ÑŒ Ð½Ð° Ð±Ð»Ð¾Ðº Ð¿Ð°Ð¼ÑÑ‚Ð¸ Ð´Ð°Ð½Ð½Ñ‹Ñ….
+	// Âîçâðàùàåò óêàçàòåëü íà áëîê ïàìÿòè äàííûõ.
 	char* getData() { return this->data; }
 
-	// Ð’Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ Ñ€Ð°Ð·Ð¼ÐµÑ€ Ð±Ð»Ð¾ÐºÐ° Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð² Ð±Ð°Ð¹Ñ‚Ð°Ñ….
+	// Âîçâðàùàåò ðàçìåð áëîêà äàííûõ â áàéòàõ.
 	size_t getSize() { return this->size; }
 
-	// ÐŸÐµÑ‡Ð°Ñ‚Ð°ÐµÑ‚ ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ð¼Ð¾Ðµ Ð±ÑƒÑ„ÐµÑ€Ð° ÐºÐ°Ðº Ñ‚ÐµÐºÑÑ‚.
+	// Ïå÷àòàåò ñîäåðæèìîå áóôåðà êàê òåêñò.
 	void printText() { if (this->data != nullptr) { puts(this->data); } }
 };
 
-// ÐšÐ»Ð°ÑÑ Ð´Ð»Ñ Ñ€Ð°Ð±Ð¾Ñ‚Ñ‹ Ñ Ð±Ð¸Ð½Ð°Ñ€Ð½Ñ‹Ð¼Ð¸ Ñ„Ð°Ð¹Ð»Ð°Ð¼Ð¸.
+// Êëàññ äëÿ ðàáîòû ñ áèíàðíûìè ôàéëàìè.
 class binaryFileBuffer
 {
 public:
-	uint8_t* data;
-	size_t size;
+	uint8_t* data;			/* Àäðåñ áëîêà äàííûõ. */
+	size_t size;			/* Ðàçìåð äàííûõ â áàéòàõ. */
 
 	binaryFileBuffer() : data(nullptr), size(0) { }
 
@@ -131,92 +139,92 @@ public:
 
 	~binaryFileBuffer()
 	{
-		if (this->data != nullptr) { free(this->data); }
+		free(this->data);
 	}
 
-	// Ð‘ÑƒÑ„ÐµÑ€Ð¸Ð·ÑƒÐµÑ‚ Ð±Ð¸Ð½Ð°Ñ€Ð½Ñ‹Ð¹ Ñ„Ð°Ð¹Ð».
+	// Áóôåðèçóåò áèíàðíûé ôàéë.
 	bool readBinaryFileToArray(const char* filePath)
 	{
-		// Ð‘Ð»Ð¾Ðº Ð¿Ð°Ð¼ÑÑ‚Ð¸ ÑƒÐ¶Ðµ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÐµÑ‚?
+		// Áëîê ïàìÿòè óæå ñóùåñòâóåò?
 		if (this->data != nullptr)
 		{
 			free(this->data);
 			this->size = 0;
 		}
 
-		// ÐžÑ‚ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Îòêðûâàåì ôàéë.
 		FILE* file = nullptr;
 		errno_t error = fopen_s(&file, filePath, "rb");
 		if (error != 0 || file == nullptr)
 		{
-			printf("readBinaryFileToArray(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» %s.", filePath);
+			printf("readBinaryFileToArray(): can't open file %s.", filePath);
 			return false;
 		}
 
-		// Ð’Ñ‹Ñ‡Ð¸ÑÐ»ÑÐµÐ¼ Ð´Ð»Ð¸Ð½Ñƒ Ñ„Ð°Ð¹Ð»Ð°.
-		long int savePos = ftell(file);
-		fseek(file, 0L, SEEK_END);
-		size_t bufferLength = ftell(file);
-		fseek(file, savePos, SEEK_SET);
+		// Âû÷èñëÿåì äëèíó ôàéëà.
+		long int savePos = FTELL(file);
+		FSEEK(file, 0L, SEEK_END);
+		size_t bufferLength = FTELL(file);
+		FSEEK(file, savePos, SEEK_SET);
 
-		// ÐŸÑ€Ð¾Ð±ÑƒÐµÐ¼ Ð²Ñ‹Ð´ÐµÐ»Ð¸Ñ‚ÑŒ Ð±Ð»Ð¾Ðº Ð¿Ð°Ð¼ÑÑ‚Ð¸.
+		// Ïðîáóåì âûäåëèòü áëîê ïàìÿòè.
 		uint8_t* fBuffer = (uint8_t*)malloc(sizeof(uint8_t) * bufferLength);
 		if (fBuffer == nullptr)
 		{
-			puts("readBinaryFileToArray(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð²Ñ‹Ð´ÐµÐ»Ð¸Ñ‚ÑŒ Ð¿Ð°Ð¼ÑÑ‚ÑŒ.");
+			puts("readBinaryFileToArray(): can't allocate memory.");
 			fclose(file);
 			return false;
 		}
 
-		// Ð‘ÑƒÑ„ÐµÑ€Ð¸Ð·ÑƒÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Áóôåðèçóåì ôàéë.
 		size_t rCount = fread(fBuffer, sizeof(uint8_t), bufferLength, file);
 
-		// Ð—Ð°ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Çàêðûâàåì ôàéë.
 		fclose(file);
 
-		// Ð—Ð°Ð¿Ð¾Ð¼Ð¸Ð½Ð°ÐµÐ¼ Ð°Ð´Ñ€ÐµÑ Ð¸ Ñ€Ð°Ð·Ð¼ÐµÑ€ Ð±ÑƒÑ„ÐµÑ€Ð°.
+		// Çàïîìèíàåì àäðåñ è ðàçìåð áóôåðà.
 		this->data = fBuffer;
 		this->size = rCount;
 
 		return true;
 	}
 
-	// Ð—Ð°Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÑ‚ Ð¼Ð°ÑÑÐ¸Ð² Ð±Ð°Ð¹Ñ‚ Ð² Ð±Ð¸Ð½Ð°Ñ€Ð½Ñ‹Ð¹ Ñ„Ð°Ð¹Ð».
+	// Çàïèñûâàåò ìàññèâ áàéò â áèíàðíûé ôàéë.
 	void writeBytesInBinaryFile(const char* filePath)
 	{
-		// ÐžÑ‚ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ð¸Ð»Ð¸ ÑÐ¾Ð·Ð´Ð°Ñ‘Ð¼ Ñ„Ð°Ð¹Ð».
-		FILE* file = NULL;
+		// Îòêðûâàåì èëè ñîçäà¸ì ôàéë.
+		FILE* file = nullptr;
 		errno_t error = fopen_s(&file, filePath, "wb");
-		if (error != 0 || file == NULL)
+		if (error != 0 || file == nullptr)
 		{
-			printf("writeBytesInBinaryFile(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» %s.", filePath);
+			printf("writeBytesInBinaryFile(): can't open file %s.", filePath);
 			return;
 		}
 
-		// Ð—Ð°Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÐ¼ Ð¼Ð°ÑÑÐ¸Ð² Ð±Ð°Ð¹Ñ‚ Ð² Ñ„Ð°Ð¹Ð».
+		// Çàïèñûâàåì ìàññèâ áàéò â ôàéë.
 		size_t wCount = fwrite(this->data, sizeof(uint8_t), this->size, file);
 		if (wCount == 0)
 		{
-			puts("writeBytesInBinaryFile(): Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð·Ð°Ð¿Ð¸ÑÐ°Ñ‚ÑŒ Ð¼Ð°ÑÑÐ¸Ð² Ð² Ñ„Ð°Ð¹Ð».");
+			puts("writeBytesInBinaryFile(): can't write array in file.");
 		}
 
-		// Ð—Ð°ÐºÑ€Ñ‹Ð²Ð°ÐµÐ¼ Ñ„Ð°Ð¹Ð».
+		// Çàêðûâàåì ôàéë.
 		fclose(file);
 	}
 
-	// Ð’Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ ÑƒÐºÐ°Ð·Ð°Ñ‚ÐµÐ»ÑŒ Ð½Ð° Ð±Ð»Ð¾Ðº Ð¿Ð°Ð¼ÑÑ‚Ð¸ Ð´Ð°Ð½Ð½Ñ‹Ñ….
+	// Âîçâðàùàåò óêàçàòåëü íà áëîê ïàìÿòè äàííûõ.
 	unsigned char* getData() { return this->data; }
 
-	// Ð’Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ Ñ€Ð°Ð·Ð¼ÐµÑ€ Ð±Ð»Ð¾ÐºÐ° Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð² Ð±Ð°Ð¹Ñ‚Ð°Ñ….
+	// Âîçâðàùàåò ðàçìåð áëîêà äàííûõ â áàéòàõ.
 	size_t getSize() { return this->size; }
 
-	// ÐŸÐµÑ‡Ð°Ñ‚Ð°ÐµÑ‚ ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ð¼Ð¾Ðµ Ð±ÑƒÑ„ÐµÑ€Ð° ÐºÐ°Ðº Ð¼Ð°ÑÑÐ¸Ð² Ð±Ð°Ð¹Ñ‚.
+	// Ïå÷àòàåò ñîäåðæèìîå áóôåðà êàê ìàññèâ áàéò.
 	void printBinary()
 	{
-		// Ð‘Ð»Ð¾ÐºÐ° Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð½Ðµ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÐµÑ‚?
+		// Áëîêà äàííûõ íå ñóùåñòâóåò?
 		if (this->data == nullptr) { return; }
 
-		// ÐŸÐµÑ‡Ð°Ñ‚Ð°ÐµÐ¼ Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ñ Ð±Ð°Ð¹Ñ‚ Ð² ÐºÐ¾Ð½ÑÐ¾Ð»ÑŒ.
+		// Ïå÷àòàåì çíà÷åíèÿ áàéò â êîíñîëü.
 		uint8_t* it = this->data;
 		size_t i = this->size;
 		while (i > 0)
@@ -228,13 +236,13 @@ public:
 		puts("");
 	}
 
-	// ÐŸÐµÑ‡Ð°Ñ‚Ð°ÐµÑ‚ ÑÐ¾Ð´ÐµÑ€Ð¶Ð¸Ð¼Ð¾Ðµ Ð±ÑƒÑ„ÐµÑ€Ð° ÐºÐ°Ðº Ð¼Ð°ÑÑÐ¸Ð² Ð±Ð°Ð¹Ñ‚ Ð¿Ð¾ N Ð² ÑÑ‚Ñ€Ð¾ÐºÐµ.
-	void printBinary(unsigned int N)
+	// Ïå÷àòàåò ñîäåðæèìîå áóôåðà êàê ìàññèâ áàéò ïî N â ñòðîêå.
+	void printBinary(size_t N)
 	{
-		// Ð‘Ð»Ð¾ÐºÐ° Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð½Ðµ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÐµÑ‚?
+		// Áëîêà äàííûõ íå ñóùåñòâóåò?
 		if (this->data == nullptr) { return; }
 
-		// ÐŸÐµÑ‡Ð°Ñ‚Ð°ÐµÐ¼ Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ñ Ð±Ð°Ð¹Ñ‚ Ð² ÐºÐ¾Ð½ÑÐ¾Ð»ÑŒ.
+		// Ïå÷àòàåì çíà÷åíèÿ áàéò â êîíñîëü.
 		uint8_t* it = this->data;
 		size_t i = 0;
 		while (i < this->size)
