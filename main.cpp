@@ -1,7 +1,4 @@
-//#include "fileBuffers.hpp"
-#include <MELS/fileSystem.hpp>
-using MELS::textFileBuffer;
-using MELS::binaryFileBuffer;
+#include "fileBuffers.hpp"
 
 int main()
 {
