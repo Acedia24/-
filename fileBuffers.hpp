@@ -52,11 +52,19 @@ public:
 			return false;
 		}
 
+		// Отключаем буферизацию данных потоком связанным с file.
+		error = setvbuf(file, NULL, _IONBF, NULL);
+		if (error != 0)
+		{
+			puts("readFileToStr(): can't turn off buffering");
+			fclose(file);
+			return false;
+		}
+		
 		// Вычисляем длину файла.
-		long int savePos = FTELL(file);
 		FSEEK(file, 0L, SEEK_END);
 		size_t bufferLength = FTELL(file);
-		FSEEK(file, savePos, SEEK_SET);
+		FSEEK(file, 0L, SEEK_SET);
 
 		// Пробуем выделить блок памяти.
 		char* fBuffer = (char*)malloc(sizeof(char) * bufferLength);
@@ -161,11 +169,20 @@ public:
 			return false;
 		}
 
+		
+		// Отключаем буферизацию данных потоком связанным с file.
+		error = setvbuf(file, NULL, _IONBF, NULL);
+		if (error != 0)
+		{
+			puts("readBinaryFileToArray(): can't turn off buffering");
+			fclose(file);
+			return false;
+		}
+		
 		// Вычисляем длину файла.
-		long int savePos = FTELL(file);
 		FSEEK(file, 0L, SEEK_END);
 		size_t bufferLength = FTELL(file);
-		FSEEK(file, savePos, SEEK_SET);
+		FSEEK(file, 0L, SEEK_SET);
 
 		// Пробуем выделить блок памяти.
 		uint8_t* fBuffer = (uint8_t*)malloc(sizeof(uint8_t) * bufferLength);
